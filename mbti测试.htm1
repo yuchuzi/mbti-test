@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MBTI 人格类型测试</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;padding:24px 12px;background:#eef1f6;color:#1f2329;line-height:1.55;
+       font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
+  .wrap{max-width:880px;margin:0 auto;background:#fff;border-radius:16px;
+        padding:28px 24px 32px;box-shadow:0 6px 30px rgba(20,40,90,.08)}
+  h1{font-size:23px;margin:0 0 10px}
+  .sub{color:#5c6675;font-size:14px;margin:0 0 18px}
+  .progress{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  .track{flex:1;height:8px;background:#e8ecf3;border-radius:99px;overflow:hidden}
+  #pfill{height:100%;width:0;border-radius:99px;transition:width .2s;
+         background:linear-gradient(90deg,#5b8cff,#8a6bff)}
+  #ptext{font-size:13px;color:#7a8494;white-space:nowrap}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;vertical-align:top;padding:12px 8px;
+        border-bottom:1px solid #eef1f6;font-size:14px}
+  th{font-size:13px;color:#7a8494;font-weight:600;background:#fafbfd}
+  .qtext{width:44%}
+  .qno{color:#9aa4b2;margin-right:4px}
+  .opts{display:flex;flex-direction:column;gap:8px}
+  .opts label{display:flex;gap:9px;align-items:flex-start;padding:9px 12px;
+              border:1px solid #e2e7f0;border-radius:10px;cursor:pointer;
+              transition:.15s;background:#fff}
+  .opts label:hover{border-color:#9db6ff;background:#f7f9ff}
+  .opts label:has(input:checked){border-color:#5b8cff;background:#eef3ff;
+                                 box-shadow:inset 0 0 0 1px #5b8cff}
+  .opts input{margin:3px 0 0;accent-color:#5b8cff;flex:none}
+  .actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}
+  button{font:inherit;font-size:15px;font-weight:600;padding:12px 30px;border:none;
+         border-radius:10px;color:#fff;cursor:pointer;transition:.15s;
+         background:linear-gradient(135deg,#5b8cff,#8a6bff)}
+  button:hover{filter:brightness(1.06);transform:translateY(-1px)}
+  button.ghost{background:#f1f4f9;color:#4a5568}
+  .result{margin-top:28px;padding-top:24px;border-top:2px dashed #e6eaf2}
+  .type-code{font-size:42px;font-weight:800;letter-spacing:3px;
+             background:linear-gradient(135deg,#5b8cff,#8a6bff);
+             -webkit-background-clip:text;background-clip:text;color:transparent}
+  .type-name{font-size:18px;font-weight:600;margin:2px 0 16px}
+  .dim{margin:14px 0}
+  .dim-head{display:flex;justify-content:space-between;font-size:13px;
+            color:#5c6675;margin-bottom:6px}
+  .dim-head b{color:#1f2329}
+  .bar{height:10px;background:#e8ecf3;border-radius:99px;overflow:hidden;display:flex}
+  .bar .l{background:#5b8cff;height:100%}
+  .bar .r{background:#ffb35b;height:100%}
+  .desc{background:#f7f9ff;border-radius:12px;padding:14px 16px;font-size:14.5px;
+        color:#3a4453;margin-top:18px;line-height:1.75}
+  .tip{font-size:12.5px;color:#98a2b3;margin:14px 0 0}
+  @media(max-width:640px){
+    .wrap{padding:20px 14px}
+    thead{display:none}
+    tr{display:block;padding:10px 0;border-bottom:8px solid #f5f7fb}
+    td{display:block;border:none;padding:3px 0}
+    .qtext{width:auto;font-weight:600}
+    .type-code{font-size:34px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>MBTI 人格类型测试</h1>
+  <p class="sub">共 28 题。请按你<b>平时真实的样子</b>选择（而不是你希望成为的样子），凭第一感觉作答即可。全部完成后点击底部按钮查看结果。</p >
+
+  <div class="progress">
+    <div class="track"><div id="pfill"></div></div>
+    <span id="ptext">已答 0 / 28</span>
+  </div>
+
+  <table>
+    <thead><tr><th>题目</th><th>选项（二选一）</th></tr></thead>
+    <tbody id="tbody"></tbody>
+  </table>
+
+  <div class="actions">
+    <button id="submit">查看结果</button>
+    <button id="reset" class="ghost">重新填写</button>
+  </div>
+
+  <div id="result" class="result" hidden></div>
+</div>
+
+<script>
+/* 题目格式：[题干, A选项文字, A选项维度, B选项文字, B选项维度] */
+const QS = [
+  ["参加聚会时，你通常会：","主动和许多陌生人聊天","E","只和熟悉的人待在一起","I"],
+  ["周末你更想：","独自待在家里做自己的事","I","出门见朋友、参加活动","E"],
+  ["思考问题时，你更习惯：","边说边想，说出来才更清楚","E","先在心里想清楚再开口","I"],
+  ["长时间社交之后，你通常：","感到疲惫，需要独处恢复","I","精力充沛，意犹未尽","E"],
+  ["在小组讨论中，你更常：","积极发言，边说边整理思路","E","安静倾听，偶尔才发表意见","I"],
+  ["你更喜欢哪种沟通方式：","文字消息，有思考的时间","I","面对面或电话，即时互动","E"],
+  ["认识新朋友对你来说：","轻松愉快，很期待","E","有点耗神，需要心理准备","I"],
+
+  ["你更关注：","眼前的具体事实和细节","S","未来的可能性和整体趋势","N"],
+  ["学习新东西时，你更喜欢：","先了解整体概念和原理","N","按步骤一步步来，先掌握具体方法","S"],
+  ["你更信任：","亲身经验和实际观察","S","直觉和灵感","N"],
+  ["别人向你描述一件事，你更希望他：","讲清楚具体的细节和经过","S","讲重点和背后的意义","N"],
+  ["你更喜欢的故事类型是：","贴近现实、写实的生活故事","S","充满想象、超现实的故事","N"],
+  ["做事时，你更习惯：","尝试新的、没试过的方法","N","沿用被验证有效的老方法","S"],
+  ["你更容易注意到：","环境中具体的变化（比如换了摆设）","S","事情之间的模式和内在联系","N"],
+
+  ["做决定时，你更看重：","逻辑分析和客观利弊","T","对他人的影响和自己的价值观","F"],
+  ["朋友向你倾诉烦恼，你会先：","安慰他，表达理解","F","帮他分析问题、给出建议","T"],
+  ["别人批评你时，你更倾向于：","判断这个批评是否合理","T","先感到不舒服或受伤","F"],
+  ["在团队中，你更看重：","氛围和人际关系","F","效率和结果","T"],
+  ["你认为更重要的是：","公平，一视同仁","T","体谅每个人的具体处境","F"],
+  ["与人争论时，你更在意：","谁的道理更站得住脚","T","会不会伤害彼此的感情","F"],
+  ["你更容易被什么打动：","真诚的情感表达","F","严密的论证和精妙的逻辑","T"],
+
+  ["你更喜欢：","提前做好计划和安排","J","随机应变，保持灵活","P"],
+  ["面对截止日期，你通常：","临近了才开始冲刺","P","提前完成，留出余量","J"],
+  ["你的房间/桌面通常：","整洁有序，东西各有其位","J","有点乱，但我知道东西在哪","P"],
+  ["旅行时你更喜欢：","走到哪算哪，随意探索","P","提前定好行程和住宿","J"],
+  ["事情悬而未决时，你会：","感到不安，想尽快确定下来","J","觉得没关系，看看再说","P"],
+  ["你更喜欢的做事方式：","先定好方案，再按计划执行","J","边做边调整，走一步看一步","P"],
+  ["对于规则，你倾向于：","视情况灵活处理","P","遵守并维护，规则让事情有序","J"]
+];
+
+const TYPES = {
+  ISTJ:{name:"物流师",desc:"务实、可靠、有责任感。你重视秩序与承诺，做事细致踏实，喜欢按既定规则把事情一次做对，是团队里最让人放心的那一个。适合需要严谨与坚持的角色。"},
+  ISFJ:{name:"守卫者",desc:"温和、细心、默默付出。你记得住别人的喜好与需要，重视传统与承诺，习惯用实际行动照顾身边的人，常常是先想到他人、后想到自己。"},
+  INFJ:{name:"提倡者",desc:"理想主义且有洞察力。你能敏锐感知他人的情绪与动机，内心有一套坚定的价值准则，希望做有意义的事，并愿意为此长期投入。"},
+  INTJ:{name:"建筑师",desc:"独立、理性、擅长长远规划。你喜欢用系统的方法分析问题，对低效和空谈没耐心，习惯在心里推演好几步之后才行动，是天生的战略型思考者。"},
+  ISTP:{name:"鉴赏家",desc:"冷静、灵活、动手能力强。你更喜欢在实践中摸索原理，遇到问题当场解决，不爱被条条框框束缚，危机时刻往往格外沉稳。"},
+  ISFP:{name:"探险家",desc:"敏感、随性、重视当下体验。你对美和氛围有天然的感知力，不喜欢被安排，更愿意跟随内心感受生活，温和但很有自己的坚持。"},
+  INFP:{name:"调停者",desc:"内心世界丰富，重视真诚与价值观。你善于共情，讨厌虚伪和冲突，常常在文字、创作或帮助他人中找到意义感。"},
+  INTP:{name:"逻辑学家",desc:"好奇、爱分析、沉迷概念推演。你享受把一个问题拆开研究透彻的过程，对逻辑漏洞极其敏感，比起结论更在意推理是否严密。"},
+  ESTP:{name:"企业家",desc:"行动力强、反应快、敢冒险。你习惯在真实世界里边做边学，善于抓住眼前机会，喜欢有刺激和挑战的环境，不喜欢冗长的会议。"},
+  ESFP:{name:"表演者",desc:"热情、外向、享受当下。你天生会带动气氛，对人和环境的变化很敏感，喜欢新鲜体验，愿意把快乐分享给周围的人。"},
+  ENFP:{name:"竞选者",desc:"热情、有创意、善于激励他人。你对可能性充满兴趣，喜欢结识不同的人，讨厌重复和束缚，常常是团队里的点子与能量来源。"},
+  ENTP:{name:"辩论家",desc:"思维敏捷、喜欢挑战观点。你享受头脑碰撞的乐趣，总能提出别人没想到的角度，对新鲜事物上手快，但不太喜欢收尾的琐事。"},
+  ESTJ:{name:"总经理",desc:"果断、高效、组织力强。你重视规则、流程与结果，擅长把混乱的事情理顺并推动落地，愿意承担责任，也希望别人说到做到。"},
+  ESFJ:{name:"执政官",desc:"热心、周到、重视和谐。你善于照顾他人的感受，乐于组织和参与集体活动，是维系关系与氛围的关键人物，也希望被肯定和需要。"},
+  ENFJ:{name:"主人公",desc:"有感染力、善于鼓舞他人。你能看到每个人的潜力，愿意花时间引导和帮助别人成长，在群体中天然带有号召力，也很在意关系是否融洽。"},
+  ENTJ:{name:"指挥官",desc:"目标明确、领导力强。你习惯先定方向再调资源，喜欢挑战难题并推动团队往前冲，对低效和犹豫容忍度低，天生有掌控全局的欲望。"}
+};
+
+/* ---------- 渲染题目 ---------- */
+const tbody = document.getElementById('tbody');
+QS.forEach(([q, at, ad, bt, bd], i) => {
+  const tr = document.createElement('tr');
+  tr.innerHTML =
+    `<td class="qtext"><span class="qno">${i + 1}.</span>${q}</td>
+     <td><div class="opts">
+       <label><input type="radio" name="q${i}" value="${ad}"><span>${at}</span></label>
+       <label><input type="radio" name="q${i}" value="${bd}"><span>${bt}</span></label>
+     </div></td>`;
+  tbody.appendChild(tr);
+});
+
+/* ---------- 进度 ---------- */
+const total = QS.length;
+function updateProgress() {
+  const n = document.querySelectorAll('#tbody input:checked').length;
+  document.getElementById('ptext').textContent = `已答 ${n} / ${total}`;
+  document.getElementById('pfill').style.width = (n / total * 100) + '%';
+}
+tbody.addEventListener('change', updateProgress);
+
+/* ---------- 计分与结果 ---------- */
+const DIMS = [
+  ['E','I','外向','内向'],
+  ['S','N','实感','直觉'],
+  ['T','F','思考','情感'],
+  ['J','P','判断','知觉']
+];
+
+function showResult() {
+  const s = {E:0,I:0,S:0,N:0,T:0,F:0,J:0,P:0};
+  document.querySelectorAll('#tbody input:checked').forEach(el => s[el.value]++);
+
+  const pct = (a, b) => (s[a] + s[b]) === 0 ? 50 : Math.round(s[a] / (s[a] + s[b]) * 100);
+
+  let code = '', bars = '';
+  DIMS.forEach(([a, b, na, nb]) => {
+    const pa = pct(a, b), pb = 100 - pa;
+    code += pa >= pb ? a : b;
+    bars +=
+      `<div class="dim">
+         <div class="dim-head">
+           <span>${a} ${na} <b>${pa}%</b></span>
+           <span><b>${pb}%</b> ${nb} ${b}</span>
+         </div>
+         <div class="bar">
+           <div class="l" style="width:${pa}%"></div>
+           <div class="r" style="width:${pb}%"></div>
+         </div>
+       </div>`;
+  });
+
+  const info = TYPES[code];
+  const res = document.getElementById('result');
+  res.innerHTML =
+    `<div class="type-code">${code}</div>
+     <div class="type-name">${info.name}</div>
+     ${bars}
+     <div class="desc"><b>${info.name}（${code}）</b><br>${info.desc}</div>
+     <p class="tip">※ 本测试基于 MBTI 四个维度的自评，结果仅供自我了解与娱乐参考，不构成心理诊断。</p >`;
+  res.hidden = false;
+  res.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+document.getElementById('submit').addEventListener('click', () => {
+  const n = document.querySelectorAll('#tbody input:checked').length;
+  if (n < total && !confirm(`还有 ${total - n} 题未作答，未答题目不计分。确定查看结果吗？`)) return;
+  showResult();
+});
+
+document.getElementById('reset').addEventListener('click', () => {
+  document.querySelectorAll('#tbody input').forEach(i => i.checked = false);
+  document.getElementById('result').hidden = true;
+  updateProgress();
+  window.scrollTo({top:0, behavior:'smooth'});
+});
+</script>
+</body>
+</html>
